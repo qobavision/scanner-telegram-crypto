@@ -1,0 +1,1369 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Calculadora DCA — Binance Futures</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg: #080c12;
+      --surface: #0e1520;
+      --surface2: #141e2d;
+      --border: rgba(255,255,255,.07);
+      --border2: rgba(255,255,255,.12);
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --muted2: #94a3b8;
+      --green: #10b981;
+      --green-dim: rgba(16,185,129,.12);
+      --green-border: rgba(16,185,129,.3);
+      --red: #f43f5e;
+      --red-dim: rgba(244,63,94,.1);
+      --red-border: rgba(244,63,94,.28);
+      --blue: #38bdf8;
+      --blue-dim: rgba(56,189,248,.1);
+      --amber: #f59e0b;
+      --radius: 14px;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      background-image:
+        radial-gradient(ellipse 900px 500px at 80% 0%, rgba(56,189,248,.06) 0%, transparent 60%),
+        radial-gradient(ellipse 700px 400px at 0% 100%, rgba(16,185,129,.07) 0%, transparent 55%);
+      font-family: 'DM Sans', sans-serif;
+      color: var(--text);
+      padding: 24px 16px 48px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .wrap {
+      width: min(1020px, 100%);
+    }
+
+    .hdr {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 2px 18px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 20px;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .hdr-left h1 {
+      margin: 0;
+      font-family: 'Space Mono', monospace;
+      font-size: 15px;
+      letter-spacing: .5px;
+      color: var(--text);
+    }
+
+    .hdr-left p {
+      margin: 4px 0 0;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .tag {
+      font-family: 'Space Mono', monospace;
+      font-size: 11px;
+      padding: 5px 10px;
+      border: 1px solid var(--border2);
+      border-radius: 999px;
+      color: var(--muted2);
+      background: rgba(255,255,255,.03);
+    }
+
+    .grid2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    @media(max-width:820px) {
+      .grid2 {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px;
+    }
+
+    .panel-title {
+      font-family: 'Space Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--muted2);
+      margin: 0 0 14px;
+    }
+
+    .fgrid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    @media(max-width:480px) {
+      .fgrid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .fgrid.full {
+      grid-template-columns: 1fr;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .field label {
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: .3px;
+    }
+
+    .field input,
+    .field select {
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      border-radius: 10px;
+      color: var(--text);
+      padding: 9px 11px;
+      font-size: 13px;
+      font-family: 'DM Sans', sans-serif;
+      outline: none;
+      transition: border-color .15s, box-shadow .15s;
+    }
+
+    .field input:focus,
+    .field select:focus {
+      border-color: rgba(56,189,248,.5);
+      box-shadow: 0 0 0 3px rgba(56,189,248,.1);
+    }
+
+    .mode-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .mode-btn {
+      flex: 1;
+      padding: 9px 10px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 12px;
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 500;
+      border: 1px solid var(--border2);
+      background: transparent;
+      color: var(--muted2);
+      transition: all .15s;
+    }
+
+    .mode-btn.active {
+      background: var(--blue-dim);
+      border-color: rgba(56,189,248,.45);
+      color: var(--blue);
+    }
+
+    .risk-row {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-top: 4px;
+    }
+
+    .risk-chip {
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      cursor: pointer;
+      border: 1px solid var(--border2);
+      background: transparent;
+      color: var(--muted2);
+      font-family: 'DM Sans', sans-serif;
+      transition: all .15s;
+    }
+
+    .risk-chip.active {
+      background: var(--green-dim);
+      border-color: var(--green-border);
+      color: var(--green);
+    }
+
+    .preset-row {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-top: 4px;
+    }
+
+    .preset-btn {
+      padding: 6px 11px;
+      border-radius: 999px;
+      font-size: 12px;
+      cursor: pointer;
+      border: 1px solid var(--border2);
+      background: transparent;
+      color: var(--muted2);
+      font-family: 'Space Mono', monospace;
+      transition: all .15s;
+    }
+
+    .preset-btn.active {
+      background: rgba(248,113,113,.1);
+      border-color: rgba(248,113,113,.35);
+      color: #f87171;
+    }
+
+    .sep {
+      height: 1px;
+      background: var(--border);
+      margin: 14px 0;
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 14px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      padding: 10px 18px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1px solid var(--border2);
+      color: var(--text);
+      background: transparent;
+      transition: all .15s;
+    }
+
+    .btn:hover {
+      border-color: var(--blue);
+      color: var(--blue);
+    }
+
+    .btn.primary {
+      background: linear-gradient(135deg, rgba(16,185,129,.2), rgba(56,189,248,.15));
+      border-color: rgba(56,189,248,.4);
+      color: #7dd3fc;
+    }
+
+    .btn.primary:hover {
+      background: linear-gradient(135deg, rgba(16,185,129,.3), rgba(56,189,248,.25));
+    }
+
+    .btn.ghost {
+      color: var(--muted);
+    }
+
+    .btn.ghost:hover {
+      color: var(--text);
+      border-color: var(--border2);
+    }
+
+    .dir-toggle {
+      display: flex;
+      gap: 0;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid var(--border2);
+    }
+
+    .dir-btn {
+      flex: 1;
+      padding: 9px;
+      text-align: center;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      border: none;
+      font-family: 'DM Sans', sans-serif;
+      transition: all .15s;
+    }
+
+    .dir-btn.long {
+      background: transparent;
+      color: var(--muted);
+    }
+
+    .dir-btn.long.active {
+      background: var(--green-dim);
+      color: var(--green);
+    }
+
+    .dir-btn.short {
+      background: transparent;
+      color: var(--muted);
+    }
+
+    .dir-btn.short.active {
+      background: var(--red-dim);
+      color: var(--red);
+    }
+
+    .warn-box {
+      display: none;
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      font-size: 12px;
+      color: #fde68a;
+      border: 1px solid rgba(245,158,11,.25);
+      background: rgba(245,158,11,.07);
+      line-height: 1.4;
+    }
+
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .kpi {
+      border-radius: 12px;
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      background: rgba(0,0,0,.2);
+    }
+
+    .kpi.g {
+      background: var(--green-dim);
+      border-color: var(--green-border);
+    }
+
+    .kpi.r {
+      background: var(--red-dim);
+      border-color: var(--red-border);
+    }
+
+    .kpi .kt {
+      font-size: 11px;
+      color: var(--muted2);
+      margin-bottom: 5px;
+    }
+
+    .kpi .kv {
+      font-family: 'Space Mono', monospace;
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .kpi.g .kv {
+      color: var(--green);
+    }
+
+    .kpi.r .kv {
+      color: var(--red);
+    }
+
+    .kpi .ks {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 3px;
+    }
+
+    .qty-total-box {
+      display: none;
+      background: rgba(56,189,248,.08);
+      border: 1px solid rgba(56,189,248,.25);
+      border-radius: 12px;
+      padding: 11px 14px;
+      margin-bottom: 12px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .qty-total-box .qtlabel {
+      font-size: 12px;
+      color: var(--muted2);
+    }
+
+    .qty-total-box .qtvalue {
+      font-family: 'Space Mono', monospace;
+      font-size: 16px;
+      color: var(--blue);
+      font-weight: 700;
+    }
+
+    .tbl-wrap {
+      overflow-x: auto;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th {
+      background: rgba(255,255,255,.025);
+      padding: 9px 11px;
+      font-size: 11px;
+      color: var(--muted2);
+      font-weight: 600;
+      font-family: 'Space Mono', monospace;
+      letter-spacing: .3px;
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    th:first-child {
+      text-align: left;
+    }
+
+    td {
+      padding: 9px 11px;
+      font-size: 12px;
+      text-align: right;
+      border-top: 1px solid var(--border);
+    }
+
+    td:first-child {
+      text-align: left;
+    }
+
+    tr:hover td {
+      background: rgba(255,255,255,.02);
+    }
+
+    .lvl-badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-family: 'Space Mono', monospace;
+      font-weight: 700;
+    }
+
+    .best {
+      background: rgba(16,185,129,.15);
+      color: var(--green);
+      border: 1px solid var(--green-border);
+    }
+
+    .good {
+      background: rgba(56,189,248,.1);
+      color: var(--blue);
+      border: 1px solid rgba(56,189,248,.25);
+    }
+
+    .caution {
+      background: rgba(245,158,11,.1);
+      color: var(--amber);
+      border: 1px solid rgba(245,158,11,.25);
+    }
+
+    .note {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 10px;
+      line-height: 1.5;
+    }
+
+    .tp-section {
+      border: 1px solid rgba(16,185,129,.2);
+      border-radius: 14px;
+      background: rgba(16,185,129,.04);
+      padding: 14px;
+    }
+
+    .tp-title {
+      font-family: 'Space Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: #6ee7b7;
+      margin: 0 0 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .tp-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+    }
+
+    .tp-card {
+      border-radius: 10px;
+      padding: 10px 12px;
+      border: 1px solid rgba(255,255,255,.07);
+      background: rgba(0,0,0,.2);
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .tp-card .tc-label {
+      font-size: 10px;
+      color: var(--muted2);
+    }
+
+    .tp-card .tc-ratio {
+      font-family: 'Space Mono', monospace;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .tp-card .tc-qty {
+      font-size: 12px;
+      color: var(--green);
+      font-weight: 600;
+    }
+
+    .tp-card .tc-pct {
+      font-size: 10px;
+      color: var(--muted);
+    }
+
+    .tp-card.tp1 {
+      border-color: rgba(16,185,129,.25);
+    }
+
+    .tp-card.tp2 {
+      border-color: rgba(56,189,248,.2);
+    }
+
+    .tp-card.tp3 {
+      border-color: rgba(168,85,247,.2);
+    }
+
+    .tp-card.tp1 .tc-ratio {
+      color: var(--green);
+    }
+
+    .tp-card.tp2 .tc-ratio {
+      color: var(--blue);
+    }
+
+    .tp-card.tp3 .tc-ratio {
+      color: #c084fc;
+    }
+
+    .single-entry-tip {
+      display: none;
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      font-size: 12px;
+      line-height: 1.5;
+      border: 1px solid rgba(245,158,11,.25);
+      background: rgba(245,158,11,.06);
+      color: #fde68a;
+    }
+
+    .single-entry-tip strong {
+      color: var(--amber);
+    }
+
+    .trigger-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .trigger-row input[type=number] {
+      flex: 1;
+    }
+
+    .check-filled {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      flex-shrink: 0;
+      border: 1px solid var(--border2);
+      background: var(--surface2);
+      cursor: pointer;
+      appearance: none;
+      -webkit-appearance: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all .15s;
+      margin-top: 0;
+      position: relative;
+    }
+
+    .check-filled:checked {
+      background: var(--green-dim);
+      border-color: var(--green-border);
+    }
+
+    .check-filled:checked::after {
+      content: '✓';
+      position: absolute;
+      color: var(--green);
+      font-size: 14px;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .filled-count-badge {
+      font-size: 11px;
+      color: var(--muted2);
+      margin-bottom: 6px;
+      font-family: 'Space Mono', monospace;
+    }
+
+    #triggersWrap .field label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .fib-tag {
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 999px;
+      background: rgba(56,189,248,.1);
+      color: var(--blue);
+      border: 1px solid rgba(56,189,248,.2);
+      font-family: 'Space Mono', monospace;
+    }
+
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      font-size: 12px;
+      color: var(--muted2);
+      margin-bottom: 10px;
+    }
+
+    .toggle-row input[type=checkbox] {
+      transform: scale(1.1);
+      accent-color: var(--blue);
+    }
+  </style>
+</head>
+
+<body>
+<div class="wrap">
+
+  <div class="hdr">
+    <div class="hdr-left">
+      <h1>DCA Calculator — Binance Futures USDT</h1>
+      <p>Pérdida máxima controlada por porcentaje de capital · Stop por estructura de mercado</p>
+    </div>
+    <span class="tag">Offline · HTML</span>
+  </div>
+
+  <div class="grid2">
+
+    <div class="panel">
+      <div class="panel-title">⚙ Parámetros</div>
+
+      <div class="field" style="margin-bottom:10px;">
+        <label>Modo de riesgo</label>
+        <div class="mode-row">
+          <button class="mode-btn" id="modeLoss" onclick="setMode('loss')">$ Pérdida fija (USDT)</button>
+          <button class="mode-btn active" id="modeCapital" onclick="setMode('capital')">% de mi capital</button>
+        </div>
+      </div>
+
+      <div id="capitalBlock">
+        <div class="fgrid" style="margin-bottom:10px;">
+          <div class="field">
+            <label>Mi capital total (USDT)</label>
+            <input id="capital" type="number" step="1" value="200" placeholder="ej: 200"/>
+          </div>
+          <div class="field">
+            <label>% de riesgo a perder</label>
+            <input id="riskPct" type="number" step="0.1" value="0.5" min="0.1" max="10"/>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Selección rápida de riesgo</label>
+          <div class="risk-row">
+            <button class="risk-chip active" onclick="setRisk(0.5)">0.5%</button>
+            <button class="risk-chip" onclick="setRisk(1)">1%</button>
+            <button class="risk-chip" onclick="setRisk(1.5)">1.5%</button>
+            <button class="risk-chip" onclick="setRisk(2)">2%</button>
+            <button class="risk-chip" onclick="setRisk(2.5)">2.5%</button>
+            <button class="risk-chip" onclick="setRisk(3)">3%</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="lossBlock" style="display:none;">
+        <div class="field">
+          <label>Máxima pérdida total (USDT)</label>
+          <input id="maxLossFixed" type="number" step="0.01" value="10"/>
+        </div>
+      </div>
+
+      <div class="sep"></div>
+
+      <div class="fgrid" style="margin-bottom:10px;">
+        <div class="field">
+          <label>Dirección</label>
+          <div class="dir-toggle">
+            <button class="dir-btn long active" id="btnLong" onclick="setDir('LONG')">▲ LONG</button>
+            <button class="dir-btn short" id="btnShort" onclick="setDir('SHORT')">▼ SHORT</button>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Número de recompras</label>
+          <select id="numTriggers" onchange="buildTriggers()">
+            <option value="1">1 entrada</option>
+            <option value="2">2 entradas</option>
+            <option value="3" selected>3 entradas (recomendado)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field" style="margin-bottom:10px;">
+        <label>Preset de multiplicadores (peso por entrada)</label>
+        <div class="preset-row">
+          <button class="preset-btn" id="pre_equal" onclick="setPreset('equal')">x1 · x1 · x1</button>
+          <button class="preset-btn active" id="pre_fib" onclick="setPreset('fib')">x2 · x3 · x1 ★</button>
+          <button class="preset-btn" id="pre_double" onclick="setPreset('double')">x1 · x2 · x4</button>
+          <button class="preset-btn" id="pre_custom" onclick="setPreset('custom')">Manual</button>
+        </div>
+      </div>
+
+      <div id="multManual" style="display:none;" class="fgrid">
+      </div>
+
+      <div class="sep"></div>
+
+      <div class="field" style="margin-bottom:12px;">
+        <label>Fee total aproximado (%)</label>
+        <input id="feePct" type="number" step="0.001" value="0.06"/>
+      </div>
+
+      <div class="panel-title" style="margin-bottom:8px;">🎯 Precios de entrada + Stop Loss</div>
+      <div id="triggersWrap" class="fgrid"></div>
+
+      <div id="warnBox" class="warn-box"></div>
+
+      <div class="btn-row">
+        <button class="btn primary" onclick="calc()">Calcular</button>
+        <button class="btn ghost" onclick="resetAll()">Reset</button>
+        <button class="btn" onclick="example()">Ejemplo SHORT</button>
+      </div>
+    </div>
+
+    <div class="panel" style="display:flex;flex-direction:column;gap:12px;">
+      <div class="panel-title">📊 Resultado</div>
+
+      <div class="kpi-grid">
+        <div class="kpi g">
+          <div class="kt">Capital a usar (suma entradas)</div>
+          <div class="kv" id="kpiTotalIn">—</div>
+          <div class="ks" id="kpiAvg">Precio medio: —</div>
+        </div>
+
+        <div class="kpi r">
+          <div class="kt">Pérdida máx estimada (con fees)</div>
+          <div class="kv" id="kpiLoss">—</div>
+          <div class="ks" id="kpiFees">Fees: — | Movimiento: —</div>
+        </div>
+
+        <div class="kpi" style="background:rgba(56,189,248,.07);border-color:rgba(56,189,248,.2);">
+          <div class="kt">% del capital usado</div>
+          <div class="kv" id="kpiCapPct" style="color:var(--blue);">—</div>
+          <div class="ks" id="kpiCapSub">—</div>
+        </div>
+
+        <div class="kpi" style="background:rgba(248,113,113,.07);border-color:rgba(248,113,113,.2);">
+          <div class="kt">% del capital en riesgo</div>
+          <div class="kv" id="kpiRiskPct" style="color:#f87171;">—</div>
+          <div class="ks" id="kpiRiskSub">—</div>
+        </div>
+      </div>
+
+      <div class="qty-total-box" id="qtyTotalBox">
+        <div class="qtlabel">🪙 Total monedas compradas/vendidas (suma de entradas)</div>
+        <div class="qtvalue" id="qtyTotalVal">—</div>
+      </div>
+
+      <div class="toggle-row">
+        <span>Mostrar cantidad de moneda por entrada</span>
+        <input type="checkbox" id="showQty" onchange="calc()" checked/>
+      </div>
+
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Entrada</th>
+              <th>Precio</th>
+              <th>USDT</th>
+              <th class="qtyCol">Cantidad</th>
+              <th>Peso</th>
+              <th>Fibo ref.</th>
+            </tr>
+          </thead>
+          <tbody id="tbody">
+            <tr>
+              <td colspan="6" style="color:var(--muted);text-align:left;padding:16px;">
+                Ingresa los datos y presiona Calcular.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="note" id="noteEl"></div>
+
+      <div class="tp-section" id="tpSection" style="display:none;">
+        <div class="tp-title">🎯 Toma de ganancias — monedas a cerrar</div>
+
+        <div class="tp-grid">
+          <div class="tp-card tp1">
+            <div class="tc-label">TP1 · Ratio 1:1</div>
+            <div class="tc-ratio" id="tp1ratio">—</div>
+            <div class="tc-qty" id="tp1qty">— monedas</div>
+            <div class="tc-pct">40% de la posición</div>
+          </div>
+
+          <div class="tp-card tp2">
+            <div class="tc-label">TP2 · Ratio 1:2</div>
+            <div class="tc-ratio" id="tp2ratio">—</div>
+            <div class="tc-qty" id="tp2qty">— monedas</div>
+            <div class="tc-pct">35% de la posición</div>
+          </div>
+
+          <div class="tp-card tp3">
+            <div class="tc-label">TP3 · Ratio 1:3</div>
+            <div class="tc-ratio" id="tp3ratio">—</div>
+            <div class="tc-qty" id="tp3qty">— monedas</div>
+            <div class="tc-pct">25% de la posición</div>
+          </div>
+        </div>
+
+        <div class="single-entry-tip" id="singleEntryTip">
+          ⚠️ <strong>Solo se llenó 1 gatillo.</strong> Con posición parcial no hagas parciales en TP1.
+          Mueve el stop a breakeven cuando llegues al 1:1 y deja correr hasta <strong>1:2 completo</strong>.
+          Así proteges capital y maximizas el trade.
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+  let mode = 'capital';
+  let dir = 'LONG';
+  let preset = 'fib';
+
+  const $ = id => document.getElementById(id);
+
+  const fmt = (n, d = 2) => {
+    return isFinite(n)
+      ? n.toLocaleString('es', { minimumFractionDigits: d, maximumFractionDigits: d })
+      : '—';
+  };
+
+  const fmtPx = (n, d = 4) => {
+    return isFinite(n)
+      ? n.toLocaleString('es', { minimumFractionDigits: d, maximumFractionDigits: d })
+      : '—';
+  };
+
+  function warn(msg) {
+    const b = $('warnBox');
+    b.style.display = msg ? 'block' : 'none';
+    b.textContent = msg || '';
+  }
+
+  function setMode(m) {
+    mode = m;
+    $('modeLoss').classList.toggle('active', m === 'loss');
+    $('modeCapital').classList.toggle('active', m === 'capital');
+    $('capitalBlock').style.display = m === 'capital' ? '' : 'none';
+    $('lossBlock').style.display = m === 'loss' ? '' : 'none';
+  }
+
+  function setRisk(v) {
+    $('riskPct').value = v;
+
+    document.querySelectorAll('.risk-chip').forEach(el => {
+      const number = parseFloat(el.textContent.replace('%', ''));
+      el.classList.toggle('active', number === v);
+    });
+  }
+
+  function setDir(d) {
+    dir = d;
+    $('btnLong').classList.toggle('active', d === 'LONG');
+    $('btnShort').classList.toggle('active', d === 'SHORT');
+    buildTriggers();
+  }
+
+  const PRESETS = {
+    equal: [1, 1, 1],
+    fib: [2, 3, 1],
+    double: [1, 2, 4],
+  };
+
+  function setPreset(p) {
+    preset = p;
+
+    ['equal', 'fib', 'double', 'custom'].forEach(k => {
+      $('pre_' + k)?.classList.toggle('active', k === p);
+    });
+
+    updateMultManual();
+    buildTriggers();
+  }
+
+  function updateMultManual() {
+    const manual = $('multManual');
+    const n = parseInt($('numTriggers').value);
+
+    if (preset === 'custom') {
+      manual.style.display = '';
+      manual.innerHTML = '';
+
+      const weights = getWeights(n);
+
+      for (let i = 0; i < n; i++) {
+        const d = document.createElement('div');
+        d.className = 'field';
+        d.innerHTML = `
+          <label>Peso entrada #${i + 1}</label>
+          <input type="number" step="0.1" min="0.1" id="mw${i}" value="${weights[i] ?? 1}"/>
+        `;
+        manual.appendChild(d);
+      }
+    } else {
+      manual.style.display = 'none';
+    }
+  }
+
+  function getWeights(n) {
+    if (preset === 'custom') {
+      return Array.from({ length: n }, (_, i) => {
+        return parseFloat($('mw' + i)?.value ?? 1) || 1;
+      });
+    }
+
+    const arr = PRESETS[preset] || [1, 1, 1];
+
+    return Array.from({ length: n }, (_, i) => arr[i] ?? 1);
+  }
+
+  const FIB_LABELS_SHORT = ['0.382', '0.500', '0.618'];
+  const FIB_LABELS_LONG = ['0.382', '0.500', '0.618'];
+
+  function buildTriggers() {
+    const wrap = $('triggersWrap');
+    wrap.innerHTML = '';
+
+    const n = parseInt($('numTriggers').value);
+    const labels = dir === 'SHORT' ? FIB_LABELS_SHORT : FIB_LABELS_LONG;
+
+    for (let i = 0; i < n; i++) {
+      const d = document.createElement('div');
+      d.className = 'field';
+
+      const fibLabel = labels[i] || '';
+
+      d.innerHTML = `
+        <label style="display:flex;align-items:center;gap:6px;">
+          Gatillo #${i + 1}
+          ${fibLabel ? `<span class="fib-tag">Fib ${fibLabel}</span>` : ''}
+          <span style="font-size:10px;color:var(--muted);margin-left:auto;">¿Se llenó?</span>
+        </label>
+        <div class="trigger-row">
+          <input type="number" step="0.0001" id="t${i}" placeholder="precio de entrada #${i + 1}"/>
+          <input type="checkbox" class="check-filled" id="filled${i}" onchange="recalcTP()" title="Marcar si este gatillo se llenó"/>
+        </div>
+      `;
+
+      wrap.appendChild(d);
+    }
+
+    const stopDiv = document.createElement('div');
+    stopDiv.className = 'field';
+
+    stopDiv.innerHTML = `
+      <label>
+        Stop Loss
+        <span class="fib-tag" style="background:rgba(244,63,94,.12);color:var(--red);border-color:rgba(244,63,94,.25);">🛑 SL</span>
+      </label>
+      <input type="number" step="0.0001" id="stop" placeholder="0.5%-1% más allá del máx/mín"/>
+    `;
+
+    wrap.appendChild(stopDiv);
+
+    updateMultManual();
+  }
+
+  function calc() {
+    warn('');
+
+    const n = parseInt($('numTriggers').value);
+    const feePct = parseFloat($('feePct').value) || 0;
+    const stop = parseFloat($('stop').value);
+
+    let maxLoss;
+    let capital = null;
+
+    if (mode === 'capital') {
+      capital = parseFloat($('capital').value);
+      const riskPct = parseFloat($('riskPct').value);
+
+      if (!(capital > 0)) {
+        return warn('Ingresa tu capital total.');
+      }
+
+      if (!(riskPct > 0)) {
+        return warn('El % de riesgo debe ser mayor a 0.');
+      }
+
+      maxLoss = capital * riskPct / 100;
+    } else {
+      maxLoss = parseFloat($('maxLossFixed').value);
+
+      if (!(maxLoss > 0)) {
+        return warn('La pérdida máxima debe ser > 0.');
+      }
+    }
+
+    if (!(stop > 0)) {
+      return warn('Ingresa el precio del Stop Loss.');
+    }
+
+    const prices = [];
+
+    for (let i = 0; i < n; i++) {
+      const v = parseFloat($('t' + i)?.value);
+
+      if (!(v > 0)) {
+        return warn(`Ingresa el precio del gatillo #${i + 1}.`);
+      }
+
+      prices.push(v);
+    }
+
+    const weights = getWeights(n);
+    const c = feePct / 100;
+
+    let dist = prices.map(p => dir === 'LONG' ? p - stop : stop - p);
+
+    if (dir === 'LONG' && dist.some(d => d <= 0)) {
+      warn('Ojo: En LONG los gatillos deben estar por encima del stop. Revisa precios.');
+    }
+
+    if (dir === 'SHORT' && dist.some(d => d <= 0)) {
+      warn('Ojo: En SHORT los gatillos deben estar por debajo del stop. Revisa precios.');
+    }
+
+    dist = dist.map(d => Math.max(d, 0));
+
+    const sumWDist = weights.reduce((a, w, i) => a + w * dist[i], 0);
+    const sumEntryW = weights.reduce((a, w, i) => a + w * prices[i], 0);
+    const sumW = weights.reduce((a, w) => a + w, 0);
+
+    const denom = sumWDist + c * (sumEntryW + stop * sumW);
+
+    if (!(denom > 0)) {
+      return warn('No se puede calcular con estos valores. Revisa gatillos y stop.');
+    }
+
+    const k = maxLoss / denom;
+    const qtys = weights.map(w => k * w);
+    const usdt = prices.map((p, i) => p * qtys[i]);
+
+    const totalQty = qtys.reduce((a, b) => a + b, 0);
+    const totalIn = usdt.reduce((a, b) => a + b, 0);
+    const avgEntry = totalQty > 0
+      ? prices.reduce((a, p, i) => a + p * qtys[i], 0) / totalQty
+      : 0;
+
+    const moveLoss = qtys.reduce((a, q, i) => a + q * dist[i], 0);
+    const fees = c * (totalIn + stop * totalQty);
+    const totalLoss = moveLoss + fees;
+
+    $('kpiTotalIn').textContent = fmt(totalIn, 2) + ' USDT';
+    $('kpiAvg').textContent = 'Precio medio: ' + fmtPx(avgEntry, 4);
+    $('kpiLoss').textContent = fmt(totalLoss, 2) + ' USDT';
+    $('kpiFees').textContent = 'Fees: ' + fmt(fees, 3) + ' | Mov: ' + fmt(moveLoss, 3);
+
+    if (capital) {
+      const capUsedPct = (totalIn / capital * 100).toFixed(1);
+      const riskPct2 = (totalLoss / capital * 100).toFixed(2);
+
+      $('kpiCapPct').textContent = capUsedPct + '%';
+      $('kpiCapSub').textContent = fmt(totalIn, 2) + ' de ' + fmt(capital, 2) + ' USDT';
+      $('kpiRiskPct').textContent = riskPct2 + '%';
+      $('kpiRiskSub').textContent = fmt(totalLoss, 2) + ' USDT al stop';
+    } else {
+      $('kpiCapPct').textContent = '—';
+      $('kpiCapSub').textContent = 'Modo pérdida fija';
+      $('kpiRiskPct').textContent = '—';
+      $('kpiRiskSub').textContent = '';
+    }
+
+    const showQty = $('showQty').checked;
+
+    const qtyBox = $('qtyTotalBox');
+    qtyBox.style.display = 'flex';
+    $('qtyTotalVal').textContent = fmt(totalQty, 6) + ' monedas';
+
+    document.querySelectorAll('.qtyCol').forEach(el => {
+      el.style.display = showQty ? '' : 'none';
+    });
+
+    const tbody = $('tbody');
+    tbody.innerHTML = '';
+
+    const labels = dir === 'SHORT' ? FIB_LABELS_SHORT : FIB_LABELS_LONG;
+    const badgeCls = ['best', 'best', 'good'];
+
+    for (let i = 0; i < n; i++) {
+      const tr = document.createElement('tr');
+      const fib = labels[i] || '—';
+      const bc = badgeCls[i] || 'caution';
+
+      tr.innerHTML = `
+        <td style="text-align:left">
+          <span class="lvl-badge ${bc}"> #${i + 1}</span>
+        </td>
+        <td>${fmtPx(prices[i], 4)}</td>
+        <td><b>${fmt(usdt[i], 2)}</b></td>
+        <td class="qtyCol" style="display:${showQty ? '' : 'none'}">${fmt(qtys[i], 6)}</td>
+        <td style="font-family:'Space Mono',monospace">${weights[i].toFixed(1)}x</td>
+        <td style="font-family:'Space Mono',monospace;color:var(--muted2)">${fib}</td>
+      `;
+
+      tbody.appendChild(tr);
+    }
+
+    const trTotal = document.createElement('tr');
+    trTotal.style.background = 'rgba(255,255,255,.025)';
+
+    trTotal.innerHTML = `
+      <td style="text-align:left;font-weight:600;color:var(--muted2)">TOTAL</td>
+      <td style="color:var(--muted)">avg ${fmtPx(avgEntry, 4)}</td>
+      <td style="font-weight:700;color:var(--green)">${fmt(totalIn, 2)}</td>
+      <td class="qtyCol" style="display:${showQty ? '' : 'none'};font-weight:700;color:var(--blue)">${fmt(totalQty, 6)}</td>
+      <td>—</td>
+      <td>—</td>
+    `;
+
+    tbody.appendChild(trTotal);
+
+    $('noteEl').textContent = `Fee usado: ${feePct}% · Stop: ${fmtPx(stop, 4)} · Resultado aproximado, considera slippage.`;
+
+    const riskDist = dir === 'LONG' ? avgEntry - stop : stop - avgEntry;
+
+    window._tpData = {
+      avgEntry,
+      stop,
+      riskDist,
+      dir,
+      qtys,
+      n,
+    };
+
+    for (let i = 0; i < n; i++) {
+      const cb = $('filled' + i);
+
+      if (cb) {
+        cb.checked = true;
+      }
+    }
+
+    recalcTP();
+  }
+
+  function recalcTP() {
+    const d = window._tpData;
+
+    if (!d) {
+      return;
+    }
+
+    const { avgEntry, stop, dir, qtys, n } = d;
+
+    let filledQty = 0;
+    let filledCount = 0;
+
+    for (let i = 0; i < n; i++) {
+      const cb = $('filled' + i);
+
+      if (cb && cb.checked) {
+        filledQty += qtys[i];
+        filledCount++;
+      }
+    }
+
+    if (filledQty <= 0) {
+      $('tpSection').style.display = 'none';
+      return;
+    }
+
+    const nTotal = parseInt($('numTriggers').value);
+
+    let sumPxQty = 0;
+    let sumQ = 0;
+
+    for (let i = 0; i < nTotal; i++) {
+      const cb = $('filled' + i);
+      const px = parseFloat($('t' + i)?.value);
+
+      if (cb && cb.checked && px > 0) {
+        sumPxQty += px * qtys[i];
+        sumQ += qtys[i];
+      }
+    }
+
+    const realAvg = sumQ > 0 ? sumPxQty / sumQ : avgEntry;
+    const realRisk = dir === 'LONG' ? realAvg - stop : stop - realAvg;
+
+    const tp1price = dir === 'LONG' ? realAvg + realRisk * 1 : realAvg - realRisk * 1;
+    const tp2price = dir === 'LONG' ? realAvg + realRisk * 2 : realAvg - realRisk * 2;
+    const tp3price = dir === 'LONG' ? realAvg + realRisk * 3 : realAvg - realRisk * 3;
+
+    const single = filledCount === 1;
+
+    if (single) {
+      $('tp1ratio').textContent = fmtPx(tp1price, 4);
+      $('tp1qty').textContent = '— (no hacer parcial)';
+
+      $('tp2ratio').textContent = fmtPx(tp2price, 4);
+      $('tp2qty').textContent = fmt(filledQty, 4) + ' monedas (100%)';
+
+      $('tp3ratio').textContent = fmtPx(tp3price, 4);
+      $('tp3qty').textContent = '— (opcional)';
+
+      $('tpSection').style.display = '';
+      $('singleEntryTip').style.display = 'block';
+    } else {
+      const tp1qty = filledQty * 0.40;
+      const tp2qty = filledQty * 0.35;
+      const tp3qty = filledQty * 0.25;
+
+      $('tp1ratio').textContent = fmtPx(tp1price, 4);
+      $('tp1qty').textContent = fmt(tp1qty, 4) + ' monedas (40%)';
+
+      $('tp2ratio').textContent = fmtPx(tp2price, 4);
+      $('tp2qty').textContent = fmt(tp2qty, 4) + ' monedas (35%)';
+
+      $('tp3ratio').textContent = fmtPx(tp3price, 4);
+      $('tp3qty').textContent = fmt(tp3qty, 4) + ' monedas (25%)';
+
+      $('tpSection').style.display = '';
+      $('singleEntryTip').style.display = 'none';
+    }
+  }
+
+  function resetAll() {
+    setMode('capital');
+    setDir('LONG');
+    setPreset('fib');
+
+    $('capital').value = 200;
+    $('riskPct').value = 0.5;
+    setRisk(0.5);
+
+    $('maxLossFixed').value = 10;
+    $('feePct').value = 0.06;
+    $('showQty').checked = true;
+
+    $('numTriggers').value = 3;
+
+    buildTriggers();
+
+    if ($('stop')) {
+      $('stop').value = '';
+    }
+
+    $('tbody').innerHTML = `
+      <tr>
+        <td colspan="6" style="color:var(--muted);text-align:left;padding:16px;">
+          Ingresa los datos y presiona Calcular.
+        </td>
+      </tr>
+    `;
+
+    [
+      'kpiTotalIn',
+      'kpiAvg',
+      'kpiLoss',
+      'kpiFees',
+      'kpiCapPct',
+      'kpiCapSub',
+      'kpiRiskPct',
+      'kpiRiskSub'
+    ].forEach(id => {
+      const el = $(id);
+
+      if (el) {
+        el.textContent = '—';
+      }
+    });
+
+    $('qtyTotalBox').style.display = 'none';
+    $('tpSection').style.display = 'none';
+
+    window._tpData = null;
+
+    $('noteEl').textContent = '';
+
+    warn('');
+  }
+
+  function example() {
+    setMode('capital');
+    setDir('SHORT');
+    setPreset('fib');
+
+    $('capital').value = 200;
+    setRisk(0.5);
+    $('feePct').value = 0.06;
+
+    $('numTriggers').value = 3;
+
+    buildTriggers();
+
+    $('t0').value = 2.38;
+    $('t1').value = 2.41;
+    $('t2').value = 2.44;
+    $('stop').value = 2.48;
+
+    calc();
+  }
+
+  buildTriggers();
+</script>
+
+</body>
+</html>
