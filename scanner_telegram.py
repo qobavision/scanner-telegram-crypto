@@ -54,7 +54,7 @@ WATCHLIST = [
 
 
 # ==========================================================
-# REQUESTS A BINANCE
+# REQUESTS GENERALES
 # ==========================================================
 
 def request_with_retries(url: str, params: dict, retries: int = 3, sleep_seconds: float = 1.5):
@@ -77,39 +77,80 @@ def request_with_retries(url: str, params: dict, retries: int = 3, sleep_seconds
     raise Exception(f"No se pudo completar request. Error final: {last_error}")
 
 
+# ==========================================================
+# REQUESTS A BYBIT
+# ==========================================================
+
+BYBIT_BASE_URL = "https://api.bybit.com"
+
+INTERVAL_MAP = {
+    "15m": "15",
+    "30m": "30",
+    "4h": "240",
+}
+
+
+def interval_to_milliseconds(interval: str) -> int:
+    if interval == "15m":
+        return 15 * 60 * 1000
+
+    if interval == "30m":
+        return 30 * 60 * 1000
+
+    if interval == "4h":
+        return 4 * 60 * 60 * 1000
+
+    raise ValueError(f"Intervalo no soportado: {interval}")
+
+
 def fetch_klines(symbol: str, interval: str, limit: int = CANDLES_LIMIT) -> pd.DataFrame:
-    url = "https://fapi.binance.com/fapi/v1/klines"
+    url = f"{BYBIT_BASE_URL}/v5/market/kline"
+
+    bybit_interval = INTERVAL_MAP.get(interval)
+
+    if not bybit_interval:
+        raise ValueError(f"Intervalo no soportado para Bybit: {interval}")
 
     params = {
+        "category": "linear",
         "symbol": symbol,
-        "interval": interval,
+        "interval": bybit_interval,
         "limit": limit
     }
 
     data = request_with_retries(url, params)
 
-    columns = [
-        "open_time",
-        "open",
-        "high",
-        "low",
-        "close",
-        "volume",
-        "close_time",
-        "quote_volume",
-        "trades",
-        "taker_buy_base",
-        "taker_buy_quote",
-        "ignore"
-    ]
+    if data.get("retCode") != 0:
+        raise Exception(f"Bybit error {data.get('retCode')}: {data.get('retMsg')}")
 
-    df = pd.DataFrame(data, columns=columns)
+    candles = data.get("result", {}).get("list", [])
 
-    for col in ["open", "high", "low", "close", "volume"]:
-        df[col] = pd.to_numeric(df[col], errors="coerce")
+    if not candles:
+        raise Exception(f"Bybit no devolvió velas para {symbol} {interval}")
+
+    rows = []
+    interval_ms = interval_to_milliseconds(interval)
+
+    for item in candles:
+        open_time_ms = int(item[0])
+
+        rows.append({
+            "open_time": open_time_ms,
+            "open": float(item[1]),
+            "high": float(item[2]),
+            "low": float(item[3]),
+            "close": float(item[4]),
+            "volume": float(item[5]),
+            "close_time": open_time_ms + interval_ms - 1,
+        })
+
+    df = pd.DataFrame(rows)
 
     df["open_time"] = pd.to_datetime(df["open_time"], unit="ms", utc=True)
     df["close_time"] = pd.to_datetime(df["close_time"], unit="ms", utc=True)
+
+    # Bybit devuelve las velas en orden inverso; las ordenamos de antigua a reciente.
+    df = df.sort_values(by="open_time").reset_index(drop=True)
 
     df = df.dropna().reset_index(drop=True)
 
@@ -117,15 +158,24 @@ def fetch_klines(symbol: str, interval: str, limit: int = CANDLES_LIMIT) -> pd.D
 
 
 def fetch_current_price(symbol: str) -> float:
-    url = "https://fapi.binance.com/fapi/v1/ticker/price"
+    url = f"{BYBIT_BASE_URL}/v5/market/tickers"
 
     params = {
+        "category": "linear",
         "symbol": symbol
     }
 
     data = request_with_retries(url, params)
 
-    return float(data["price"])
+    if data.get("retCode") != 0:
+        raise Exception(f"Bybit error {data.get('retCode')}: {data.get('retMsg')}")
+
+    ticker_list = data.get("result", {}).get("list", [])
+
+    if not ticker_list:
+        raise Exception(f"No se encontró ticker para {symbol}")
+
+    return float(ticker_list[0]["lastPrice"])
 
 
 # ==========================================================
@@ -181,8 +231,10 @@ def evaluate_short_signal(symbol: str, interval: str) -> dict:
     df = remove_open_candle(df)
     df = add_emas(df)
 
-    current_price = fetch_current_price(symbol)
+    if len(df) < EMA_TREND:
+        raise Exception(f"No hay suficientes velas para calcular EMA{EMA_TREND} en {symbol} {interval}")
 
+    current_price = fetch_current_price(symbol)
     last = df.iloc[-1]
 
     ema10 = df["ema10"]
@@ -291,6 +343,20 @@ def print_simple_summary(df_results: pd.DataFrame):
     print("\nScanner terminado.")
 
 
+def print_errors_summary(df_results: pd.DataFrame):
+    errors_df = df_results[df_results["status"].astype(str).str.startswith("ERROR")].copy()
+
+    if errors_df.empty:
+        return
+
+    print("\n======================================================")
+    print(" ERRORES DETECTADOS")
+    print("======================================================\n")
+
+    for _, row in errors_df.iterrows():
+        print(f"- {row['symbol']} {row['interval']}: {row['status']}")
+
+
 # ==========================================================
 # ALERTAS TELEGRAM
 # ==========================================================
@@ -356,6 +422,7 @@ def send_signals_to_telegram(df_results: pd.DataFrame):
         message = f"""
 🚨 <b>SEÑAL SHORT CONFIRMADA</b>
 
+<b>Fuente:</b> Bybit datos públicos
 <b>Par:</b> {row['symbol']}
 <b>Temporalidad:</b> {row['interval']}
 <b>Nivel:</b> {row['level']}
@@ -393,6 +460,7 @@ def send_signals_to_telegram(df_results: pd.DataFrame):
 def main():
     print("\n======================================================")
     print(" SCANNER SHORT ONLY - EMA")
+    print(" Fuente de datos: Bybit públicos")
     print("======================================================")
     print("Analizando mercado...")
     print("Este scanner no abre operaciones reales.\n")
@@ -442,6 +510,7 @@ def main():
     df_results = pd.DataFrame(results)
     df_results = df_results.sort_values(by="priority")
 
+    print_errors_summary(df_results)
     print_simple_summary(df_results)
     send_signals_to_telegram(df_results)
 
