@@ -19,7 +19,7 @@ EMA_MID = 60
 EMA_TREND = 180
 
 LOOKBACK_CROSSES = 10
-CANDLES_LIMIT = 500
+CANDLES_LIMIT = 300  # OKX suele trabajar bien con 300 velas recientes
 
 REQUEST_SLEEP = 0.25
 
@@ -60,9 +60,13 @@ WATCHLIST = [
 def request_with_retries(url: str, params: dict, retries: int = 3, sleep_seconds: float = 1.5):
     last_error = None
 
+    headers = {
+        "User-Agent": "Mozilla/5.0 scanner-telegram-crypto/1.0"
+    }
+
     for attempt in range(1, retries + 1):
         try:
-            response = requests.get(url, params=params, timeout=20)
+            response = requests.get(url, params=params, headers=headers, timeout=20)
 
             if response.status_code != 200:
                 raise Exception(f"Status code {response.status_code}: {response.text}")
@@ -78,16 +82,28 @@ def request_with_retries(url: str, params: dict, retries: int = 3, sleep_seconds
 
 
 # ==========================================================
-# REQUESTS A BYBIT
+# REQUESTS A OKX
 # ==========================================================
 
-BYBIT_BASE_URL = "https://api.bybit.com"
+OKX_BASE_URL = "https://www.okx.com"
 
-INTERVAL_MAP = {
-    "15m": "15",
-    "30m": "30",
-    "4h": "240",
+INTERVAL_MAP_OKX = {
+    "15m": "15m",
+    "30m": "30m",
+    "4h": "4H",
 }
+
+
+def symbol_to_okx_inst_id(symbol: str) -> str:
+    """
+    Convierte BTCUSDT -> BTC-USDT-SWAP.
+    Usamos swaps USDT de OKX como referencia de mercado.
+    """
+    if not symbol.endswith("USDT"):
+        raise ValueError(f"Símbolo no soportado: {symbol}")
+
+    base = symbol.replace("USDT", "")
+    return f"{base}-USDT-SWAP"
 
 
 def interval_to_milliseconds(interval: str) -> int:
@@ -104,35 +120,37 @@ def interval_to_milliseconds(interval: str) -> int:
 
 
 def fetch_klines(symbol: str, interval: str, limit: int = CANDLES_LIMIT) -> pd.DataFrame:
-    url = f"{BYBIT_BASE_URL}/v5/market/kline"
+    inst_id = symbol_to_okx_inst_id(symbol)
+    bar = INTERVAL_MAP_OKX.get(interval)
 
-    bybit_interval = INTERVAL_MAP.get(interval)
+    if not bar:
+        raise ValueError(f"Intervalo no soportado para OKX: {interval}")
 
-    if not bybit_interval:
-        raise ValueError(f"Intervalo no soportado para Bybit: {interval}")
+    url = f"{OKX_BASE_URL}/api/v5/market/candles"
 
     params = {
-        "category": "linear",
-        "symbol": symbol,
-        "interval": bybit_interval,
-        "limit": limit
+        "instId": inst_id,
+        "bar": bar,
+        "limit": str(limit),
     }
 
     data = request_with_retries(url, params)
 
-    if data.get("retCode") != 0:
-        raise Exception(f"Bybit error {data.get('retCode')}: {data.get('retMsg')}")
+    if data.get("code") != "0":
+        raise Exception(f"OKX error {data.get('code')}: {data.get('msg')}")
 
-    candles = data.get("result", {}).get("list", [])
+    candles = data.get("data", [])
 
     if not candles:
-        raise Exception(f"Bybit no devolvió velas para {symbol} {interval}")
+        raise Exception(f"OKX no devolvió velas para {inst_id} {interval}")
 
-    rows = []
     interval_ms = interval_to_milliseconds(interval)
+    rows = []
 
     for item in candles:
+        # OKX: [ts, open, high, low, close, vol, volCcy, volCcyQuote, confirm]
         open_time_ms = int(item[0])
+        confirm = int(item[8]) if len(item) > 8 and str(item[8]).isdigit() else 1
 
         rows.append({
             "open_time": open_time_ms,
@@ -142,6 +160,7 @@ def fetch_klines(symbol: str, interval: str, limit: int = CANDLES_LIMIT) -> pd.D
             "close": float(item[4]),
             "volume": float(item[5]),
             "close_time": open_time_ms + interval_ms - 1,
+            "confirm": confirm,
         })
 
     df = pd.DataFrame(rows)
@@ -149,33 +168,32 @@ def fetch_klines(symbol: str, interval: str, limit: int = CANDLES_LIMIT) -> pd.D
     df["open_time"] = pd.to_datetime(df["open_time"], unit="ms", utc=True)
     df["close_time"] = pd.to_datetime(df["close_time"], unit="ms", utc=True)
 
-    # Bybit devuelve las velas en orden inverso; las ordenamos de antigua a reciente.
+    # OKX devuelve primero las velas más recientes; ordenamos de antigua a reciente.
     df = df.sort_values(by="open_time").reset_index(drop=True)
-
     df = df.dropna().reset_index(drop=True)
 
     return df
 
 
 def fetch_current_price(symbol: str) -> float:
-    url = f"{BYBIT_BASE_URL}/v5/market/tickers"
+    inst_id = symbol_to_okx_inst_id(symbol)
+    url = f"{OKX_BASE_URL}/api/v5/market/ticker"
 
     params = {
-        "category": "linear",
-        "symbol": symbol
+        "instId": inst_id,
     }
 
     data = request_with_retries(url, params)
 
-    if data.get("retCode") != 0:
-        raise Exception(f"Bybit error {data.get('retCode')}: {data.get('retMsg')}")
+    if data.get("code") != "0":
+        raise Exception(f"OKX error {data.get('code')}: {data.get('msg')}")
 
-    ticker_list = data.get("result", {}).get("list", [])
+    ticker_list = data.get("data", [])
 
     if not ticker_list:
-        raise Exception(f"No se encontró ticker para {symbol}")
+        raise Exception(f"No se encontró ticker para {inst_id}")
 
-    return float(ticker_list[0]["lastPrice"])
+    return float(ticker_list[0]["last"])
 
 
 # ==========================================================
@@ -187,6 +205,14 @@ def remove_open_candle(df: pd.DataFrame) -> pd.DataFrame:
     Elimina la vela actual si todavía está abierta.
     Así evitamos señales falsas.
     """
+
+    if df.empty:
+        return df
+
+    # OKX incluye confirm=0 cuando la vela aún no está cerrada.
+    if "confirm" in df.columns and int(df["confirm"].iloc[-1]) == 0:
+        df = df.iloc[:-1].copy()
+        return df.reset_index(drop=True)
 
     now_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
     last_close_time_ms = int(df["close_time"].iloc[-1].timestamp() * 1000)
@@ -229,12 +255,14 @@ def format_price(value: float) -> str:
 def evaluate_short_signal(symbol: str, interval: str) -> dict:
     df = fetch_klines(symbol, interval)
     df = remove_open_candle(df)
-    df = add_emas(df)
 
     if len(df) < EMA_TREND:
-        raise Exception(f"No hay suficientes velas para calcular EMA{EMA_TREND} en {symbol} {interval}")
+        raise Exception(f"No hay suficientes velas cerradas para calcular EMA{EMA_TREND}")
+
+    df = add_emas(df)
 
     current_price = fetch_current_price(symbol)
+
     last = df.iloc[-1]
 
     ema10 = df["ema10"]
@@ -297,12 +325,19 @@ def evaluate_short_signal(symbol: str, interval: str) -> dict:
 # ==========================================================
 
 def print_simple_summary(df_results: pd.DataFrame):
+    error_df = df_results[df_results["status"].astype(str).str.startswith("ERROR")].copy()
     signals_df = df_results[df_results["status"] == "SEÑAL SHORT"].copy()
     signals_df = signals_df.sort_values(by="priority")
 
     print("\n======================================================")
     print(" RESUMEN SIMPLE DEL SCANNER")
     print("======================================================\n")
+
+    if not error_df.empty:
+        print("PARES CON ERROR DE DATOS:")
+        for _, row in error_df.iterrows():
+            print(f"- {row['symbol']} {row['interval']}: {row['status']}")
+        print("")
 
     if signals_df.empty:
         print("No hay señales SHORT activas.")
@@ -341,20 +376,6 @@ def print_simple_summary(df_results: pd.DataFrame):
             )
 
     print("\nScanner terminado.")
-
-
-def print_errors_summary(df_results: pd.DataFrame):
-    errors_df = df_results[df_results["status"].astype(str).str.startswith("ERROR")].copy()
-
-    if errors_df.empty:
-        return
-
-    print("\n======================================================")
-    print(" ERRORES DETECTADOS")
-    print("======================================================\n")
-
-    for _, row in errors_df.iterrows():
-        print(f"- {row['symbol']} {row['interval']}: {row['status']}")
 
 
 # ==========================================================
@@ -422,10 +443,10 @@ def send_signals_to_telegram(df_results: pd.DataFrame):
         message = f"""
 🚨 <b>SEÑAL SHORT CONFIRMADA</b>
 
-<b>Fuente:</b> Bybit datos públicos
 <b>Par:</b> {row['symbol']}
 <b>Temporalidad:</b> {row['interval']}
 <b>Nivel:</b> {row['level']}
+<b>Fuente:</b> OKX USDT-SWAP
 
 <b>Entrada:</b> {row['entry_short_now']}
 <b>TP 3%:</b> {row['take_profit_3pct']}
@@ -460,10 +481,10 @@ def send_signals_to_telegram(df_results: pd.DataFrame):
 def main():
     print("\n======================================================")
     print(" SCANNER SHORT ONLY - EMA")
-    print(" Fuente de datos: Bybit públicos")
     print("======================================================")
     print("Analizando mercado...")
-    print("Este scanner no abre operaciones reales.\n")
+    print("Este scanner no abre operaciones reales.")
+    print("Fuente de datos: OKX USDT-SWAP\n")
 
     results = []
 
@@ -510,7 +531,6 @@ def main():
     df_results = pd.DataFrame(results)
     df_results = df_results.sort_values(by="priority")
 
-    print_errors_summary(df_results)
     print_simple_summary(df_results)
     send_signals_to_telegram(df_results)
 
