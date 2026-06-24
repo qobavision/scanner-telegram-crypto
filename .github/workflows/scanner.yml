@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   run-scanner:
@@ -15,8 +15,6 @@ jobs:
     steps:
       - name: Descargar repositorio
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Configurar Python
         uses: actions/setup-python@v5
@@ -31,18 +29,3 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: python scanner_telegram.py
-
-      - name: Guardar alertas enviadas
-        run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-
-          git add sent_alerts.json
-
-          if git diff --cached --quiet; then
-            echo "No hay cambios en sent_alerts.json"
-          else
-            git commit -m "Actualizar alertas enviadas"
-            git pull --rebase origin main
-            git push
-          fi
