@@ -485,6 +485,7 @@ def main():
     print("Analizando mercado...")
     print("Este scanner no abre operaciones reales.")
     print("Fuente de datos: OKX USDT-SWAP\n")
+    send_telegram_message("✅ Prueba desde GitHub Actions: el scanner ya puede mandar alertas a Telegram.")
 
     results = []
 
